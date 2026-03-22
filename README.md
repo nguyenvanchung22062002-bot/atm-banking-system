@@ -1,7 +1,5 @@
 # ATM Transaction Simulation API
 
-RESTful API mô phỏng máy ATM — Java Core + Spring IoC + MySQL + Redis + HTML/CSS/JS
-
 ## Yêu cầu
 - Java 17+
 - Maven 3.8+ (hoặc dùng `mvnw` wrapper đi kèm)
