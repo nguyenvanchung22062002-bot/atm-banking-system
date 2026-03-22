@@ -50,6 +50,16 @@ http://localhost:8080
 
 ---
 
+## Chạy bằng Docker
+```bash
+# Copy file cấu hình
+copy application.properties.example src\main\resources\application.properties
+# Sửa db.password trong file vừa copy
+
+# Chạy toàn bộ stack
+docker compose up --build
+```
+
 ## API
 
 | Method | Path | Mô tả |
