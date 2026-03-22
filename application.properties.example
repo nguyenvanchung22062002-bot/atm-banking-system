@@ -1,0 +1,14 @@
+db.url=jdbc:mysql://db:3306/atm_db?useSSL=false&serverTimezone=Asia/Ho_Chi_Minh&allowPublicKeyRetrieval=true
+db.username=root
+db.password=YOUR_PASSWORD
+db.pool.size=10
+
+redis.host=redis
+redis.port=6379
+redis.password=
+
+session.ttl.seconds=1800
+login.max.attempts=3
+login.lock.seconds=300
+report.scheduler.hour=2
+server.port=8080

@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ATM Banking</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <style>
+    :root {
+      --bg: #0b111f; --surface: #111827; --border: #1f2d47;
+      --accent: #3b82f6; --green: #22c55e; --red: #ef4444;
+      --text: #e2e8f0; --muted: #64748b; --mono: 'Courier New', monospace;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--text); font-family: 'Segoe UI',sans-serif; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px 16px; }
+    body::before { content:''; position:fixed; inset:0; background-image: linear-gradient(rgba(59,130,246,.03) 1px,transparent 1px), linear-gradient(90deg,rgba(59,130,246,.03) 1px,transparent 1px); background-size:40px 40px; pointer-events:none; z-index:0; }
+    .atm { position:relative; z-index:1; width:580px; background:var(--surface); border:1px solid var(--border); border-radius:16px; overflow:hidden; }
+    .atm-header { background:#0d1526; border-bottom:1px solid var(--border); padding:14px 22px; display:flex; justify-content:space-between; align-items:center; }
+    .brand { font-family:var(--mono); font-size:14px; letter-spacing:3px; color:var(--accent); }
+    .status { display:flex; align-items:center; gap:6px; font-size:11px; color:var(--muted); font-family:var(--mono); }
+    .dot { width:7px; height:7px; border-radius:50%; background:var(--green); animation:blink 2s infinite; }
+    @keyframes blink { 0%,100%{opacity:1;} 50%{opacity:.3;} }
+    .screen { margin:16px; background:#060d1a; border:1px solid var(--border); border-radius:12px; min-height:440px; }
+    .page { display:none; padding:28px 26px; animation:fi .25s ease; }
+    .page.active { display:block; }
+    @keyframes fi { from{opacity:0;transform:translateY(5px);} to{opacity:1;transform:translateY(0);} }
+    .page-title { font-family:var(--mono); font-size:11px; letter-spacing:3px; color:var(--accent); text-transform:uppercase; margin-bottom:22px; opacity:.8; }
+    .balance-box { background:rgba(59,130,246,.07); border:1px solid rgba(59,130,246,.2); border-radius:10px; padding:18px 20px; margin-bottom:20px; }
+    .balance-lbl { font-size:11px; color:var(--muted); font-family:var(--mono); letter-spacing:2px; margin-bottom:6px; }
+    .balance-amt { font-family:var(--mono); font-size:30px; color:var(--green); letter-spacing:1px; }
+    .balance-sub { font-size:12px; color:var(--muted); margin-top:5px; font-family:var(--mono); }
+    .field { margin-bottom:16px; }
+    .field label { display:block; font-size:11px; color:var(--muted); font-family:var(--mono); letter-spacing:2px; margin-bottom:7px; text-transform:uppercase; }
+    .field input { width:100%; background:rgba(255,255,255,.04); border:1px solid var(--border); border-radius:8px; padding:12px 16px; color:var(--accent); font-family:var(--mono); font-size:15px; letter-spacing:2px; outline:none; transition:border-color .2s; }
+    .field input:focus { border-color:var(--accent); }
+    .field input::placeholder { color:#1e2d47; }
+    .btn { width:100%; padding:13px; border:none; border-radius:8px; font-size:13px; font-weight:700; letter-spacing:2px; text-transform:uppercase; cursor:pointer; transition:all .2s; margin-top:6px; }
+    .btn:active { transform:scale(.98); }
+    .btn:disabled { opacity:.5; cursor:not-allowed; }
+    .btn-primary  { background:linear-gradient(135deg,#1d4ed8,#3b82f6); color:#fff; }
+    .btn-success  { background:linear-gradient(135deg,#15803d,#22c55e); color:#fff; }
+    .btn-danger   { background:linear-gradient(135deg,#991b1b,#ef4444); color:#fff; }
+    .btn-ghost    { background:transparent; border:1px solid var(--border); color:var(--muted); }
+    .btn-ghost:hover { border-color:var(--accent); color:var(--accent); }
+    .menu-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:6px; }
+    .menu-item { background:rgba(255,255,255,.02); border:1px solid var(--border); border-radius:10px; padding:20px 14px; text-align:center; cursor:pointer; transition:all .2s; color:var(--text); font-size:13px; font-weight:600; letter-spacing:1px; }
+    .menu-item:hover { border-color:var(--accent); background:rgba(59,130,246,.06); color:var(--accent); transform:translateY(-1px); }
+    .menu-icon { font-size:22px; display:block; margin-bottom:8px; }
+    .alert { padding:11px 15px; border-radius:8px; font-size:13px; font-family:var(--mono); margin-bottom:16px; display:none; line-height:1.6; }
+    .alert.show { display:block; }
+    .alert-error   { background:rgba(239,68,68,.1);  border:1px solid rgba(239,68,68,.3);  color:#fca5a5; }
+    .alert-success { background:rgba(34,197,94,.08); border:1px solid rgba(34,197,94,.25); color:#86efac; }
+    .quick { display:grid; grid-template-columns:repeat(3,1fr); gap:7px; margin-bottom:14px; }
+    .qbtn { background:rgba(255,255,255,.03); border:1px solid var(--border); color:var(--text); padding:10px 4px; border-radius:6px; font-family:var(--mono); font-size:12px; cursor:pointer; text-align:center; transition:all .2s; }
+    .qbtn:hover { border-color:var(--accent); color:var(--accent); }
+    .back { display:flex; align-items:center; gap:8px; color:var(--muted); font-family:var(--mono); font-size:11px; cursor:pointer; margin-bottom:20px; letter-spacing:1px; transition:color .2s; }
+    .back:hover { color:var(--accent); }
+    .tx-list { max-height:300px; overflow-y:auto; }
+    .tx-list::-webkit-scrollbar { width:3px; }
+    .tx-list::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+    .tx-item { display:flex; justify-content:space-between; align-items:center; padding:12px 0; border-bottom:1px solid rgba(30,45,85,.8); }
+    .tx-item:last-child { border-bottom:none; }
+    .tx-type { font-size:13px; font-family:var(--mono); font-weight:600; }
+    .tx-type.DEPOSIT { color:var(--green); } .tx-type.WITHDRAW { color:var(--red); }
+    .tx-date { font-size:11px; color:var(--muted); font-family:var(--mono); margin-top:3px; }
+    .tx-amt { font-family:var(--mono); font-size:14px; font-weight:600; }
+    .tx-amt.DEPOSIT { color:var(--green); } .tx-amt.WITHDRAW { color:var(--red); }
+    .tx-status { font-size:10px; margin-top:2px; text-align:right; font-family:var(--mono); color:var(--muted); }
+    .tx-status.FAILED { color:var(--red); }
+    .rpt-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:14px; }
+    .rpt-card { background:rgba(255,255,255,.02); border:1px solid var(--border); border-radius:10px; padding:16px 14px; text-align:center; }
+    .rpt-lbl { font-size:10px; color:var(--muted); font-family:var(--mono); letter-spacing:2px; margin-bottom:8px; text-transform:uppercase; }
+    .rpt-val { font-family:var(--mono); font-size:15px; font-weight:600; }
+    .month-nav { display:flex; align-items:center; justify-content:space-between; margin-bottom:18px; }
+    .month-nav button { background:rgba(255,255,255,.04); border:1px solid var(--border); color:var(--text); padding:8px 16px; border-radius:6px; cursor:pointer; font-family:var(--mono); font-size:13px; transition:all .2s; }
+    .month-nav button:hover { border-color:var(--accent); color:var(--accent); }
+    .month-nav span { font-family:var(--mono); font-size:14px; color:var(--accent); }
+    .loader { display:inline-block; width:13px; height:13px; border:2px solid rgba(59,130,246,.2); border-top-color:var(--accent); border-radius:50%; animation:spin .6s linear infinite; vertical-align:middle; margin-right:7px; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+    .footer { background:#080f1e; border-top:1px solid var(--border); padding:10px 22px; display:flex; justify-content:space-between; }
+    .footer span { font-family:var(--mono); font-size:11px; color:var(--muted); }
+    .hint { margin-top:16px; font-size:11px; color:var(--muted); font-family:var(--mono); text-align:center; line-height:2; }
+  </style>
+</head>
+<body>
+<div class="atm">
+  <div class="atm-header">
+    <div class="brand">◈ TRUNGABANK</div>
+    <div class="status"><div class="dot"></div><span>Online</span></div>
+  </div>
+  <div class="screen">
+
+    <!-- ĐĂNG NHẬP -->
+    <div class="page active" id="page-login">
+      <div class="alert" id="login-alert"></div>
+      <div class="field">
+        <label>Số thẻ</label>
+        <input type="text" id="cardNumber" placeholder="9704 0000 0000 0000" maxlength="16" autocomplete="off" inputmode="numeric"/>
+      </div>
+      <div class="field">
+        <label>Mã PIN</label>
+        <input type="password" id="pin" placeholder="••••" maxlength="6" autocomplete="off" inputmode="numeric"/>
+      </div>
+      <button class="btn btn-primary" onclick="doLogin()"><span id="loginBtnText">ĐĂNG NHẬP</span></button>
+      <div class="hint">TEST:<br>9704000000000001 // PIN: 1234<br>9704000000000002 // PIN: 2222</div>
+    </div>
+
+    <!-- MENU -->
+    <div class="page" id="page-menu">
+      <div class="balance-box">
+        <div class="balance-lbl">Số dư</div>
+        <div class="balance-amt" id="balanceAmt">---</div>
+        <div class="balance-sub" id="accountName">---</div>
+      </div>
+      <div class="menu-grid">
+        <div class="menu-item" onclick="showPage('page-withdraw')">
+          <span class="menu-icon"><i class="fa-solid fa-money-bill-transfer"></i></span>
+          RÚT TIỀN
+        </div>
+        <div class="menu-item" onclick="showPage('page-deposit')">
+          <span class="menu-icon"><i class="fa-solid fa-wallet"></i></span>
+          NẠP TIỀN
+        </div>
+        <div class="menu-item" onclick="showPage('page-changepin')">
+          <span class="menu-icon"><i class="fa-solid fa-key"></i></span>
+          ĐỔI PIN
+        </div>
+        <div class="menu-item" onclick="loadHistory()">
+          <span class="menu-icon"><i class="fa-solid fa-clock-rotate-left"></i></span>
+          LỊCH SỬ
+        </div>
+        <div class="menu-item" onclick="loadReport()" style="grid-column:1/-1">
+          <span class="menu-icon"><i class="fa-solid fa-chart-column"></i></span>
+          BÁO CÁO THÁNG
+        </div>
+      </div>
+      <button class="btn btn-ghost" style="margin-top:14px;" onclick="doLogout()">ĐĂNG XUẤT</button>
+    </div>
+
+    <!-- RÚT TIỀN -->
+    <div class="page" id="page-withdraw">
+      <div class="back" onclick="showPage('page-menu')">← Quay lại menu</div>
+      <div class="alert" id="withdraw-alert"></div>
+      <div style="font-size:11px;color:var(--muted);font-family:var(--mono);margin-bottom:9px;">CHỌN NHANH</div>
+      <div class="quick">
+        <div class="qbtn" onclick="setAmt('withdraw-amount',500000)">500.000 ₫</div>
+        <div class="qbtn" onclick="setAmt('withdraw-amount',1000000)">1 triệu</div>
+        <div class="qbtn" onclick="setAmt('withdraw-amount',2000000)">2 triệu</div>
+        <div class="qbtn" onclick="setAmt('withdraw-amount',5000000)">5 triệu</div>
+        <div class="qbtn" onclick="setAmt('withdraw-amount',10000000)">10 triệu</div>
+        <div class="qbtn" onclick="setAmt('withdraw-amount',20000000)">20 triệu</div>
+      </div>
+      <div class="field">
+        <label>Số tiền rút (VNĐ)</label>
+        <input type="number" id="withdraw-amount" placeholder="Nhập số tiền cần rút..." min="50000" step="50000"/>
+      </div>
+      <button class="btn btn-danger" onclick="doWithdraw()"><span id="withdrawBtnText">XÁC NHẬN RÚT TIỀN</span></button>
+    </div>
+
+    <!-- NẠP TIỀN -->
+    <div class="page" id="page-deposit">
+      <div class="back" onclick="showPage('page-menu')">← Quay lại menu</div>
+      <div class="alert" id="deposit-alert"></div>
+      <div style="font-size:11px;color:var(--muted);font-family:var(--mono);margin-bottom:9px;">CHỌN NHANH</div>
+      <div class="quick">
+        <div class="qbtn" onclick="setAmt('deposit-amount',100000)">100.000 ₫</div>
+        <div class="qbtn" onclick="setAmt('deposit-amount',500000)">500.000 ₫</div>
+        <div class="qbtn" onclick="setAmt('deposit-amount',1000000)">1 triệu</div>
+        <div class="qbtn" onclick="setAmt('deposit-amount',5000000)">5 triệu</div>
+        <div class="qbtn" onclick="setAmt('deposit-amount',10000000)">10 triệu</div>
+        <div class="qbtn" onclick="setAmt('deposit-amount',50000000)">50 triệu</div>
+      </div>
+      <div class="field">
+        <label>Số tiền nạp (VNĐ)</label>
+        <input type="number" id="deposit-amount" placeholder="Nhập số tiền cần nạp..." min="10000" step="10000"/>
+      </div>
+      <button class="btn btn-success" onclick="doDeposit()"><span id="depositBtnText">XÁC NHẬN NẠP TIỀN</span></button>
+    </div>
+
+    <!-- ĐỔI PIN -->
+    <div class="page" id="page-changepin">
+      <div class="back" onclick="showPage('page-menu')">← Quay lại menu</div>
+      <div class="alert" id="pin-alert"></div>
+      <div class="field"><label>PIN hiện tại</label><input type="password" id="currentPin" placeholder="Nhập mã PIN hiện tại" maxlength="6" inputmode="numeric"/></div>
+      <div class="field"><label>PIN mới</label><input type="password" id="newPin" placeholder="Nhập mã PIN mới (4-6 chữ số)" maxlength="6" inputmode="numeric"/></div>
+      <div class="field"><label>Xác nhận PIN mới</label><input type="password" id="confirmPin" placeholder="Nhập lại mã PIN mới" maxlength="6" inputmode="numeric"/></div>
+      <button class="btn btn-primary" onclick="doChangePin()"><span id="pinBtnText">XÁC NHẬN ĐỔI PIN</span></button>
+    </div>
+
+    <!-- LỊCH SỬ -->
+    <div class="page" id="page-history">
+      <div class="back" onclick="showPage('page-menu')">← Quay lại menu</div>
+      <div class="tx-list" id="tx-list">
+        <div style="color:var(--muted);font-family:var(--mono);font-size:12px;text-align:center;padding:30px;">
+          <span class="loader"></span>Đang tải dữ liệu...
+        </div>
+      </div>
+    </div>
+
+
+    <!-- BÁO CÁO -->
+    <div class="page" id="page-report">
+      <div class="back" onclick="showPage('page-menu')">← Quay lại menu</div>
+      <div class="month-nav">
+        <button onclick="changeMonth(-1)">◀ Tháng trước</button>
+        <span id="reportMonth">---</span>
+        <button onclick="changeMonth(1)">Tháng sau ▶</button>
+      </div>
+      <div class="rpt-grid">
+        <div class="rpt-card"><div class="rpt-lbl">Số giao dịch</div><div class="rpt-val" id="rpt-count" style="color:var(--accent)">---</div></div>
+        <div class="rpt-card"><div class="rpt-lbl">Dòng tiền ròng</div><div class="rpt-val" id="rpt-net">---</div></div>
+        <div class="rpt-card"><div class="rpt-lbl">Tổng tiền nạp</div><div class="rpt-val" id="rpt-deposit" style="color:var(--green)">---</div></div>
+        <div class="rpt-card"><div class="rpt-lbl">Tổng tiền rút</div><div class="rpt-val" id="rpt-withdraw" style="color:var(--red)">---</div></div>
+      </div>
+    </div>
+
+    <div class="">
+
+    </div>
+
+  </div>
+  <div class="footer">
+    <span id="footerTime">--:--:--</span>
+    <span id="footerCard">CHƯA ĐĂNG NHẬP</span>
+  </div>
+</div>
+
+<script>
+  const API='/api';
+  let token=null, currentCard='', reportYearMonth=ym();
+
+  function ym(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');}
+  setInterval(()=>{document.getElementById('footerTime').textContent=new Date().toLocaleTimeString('vi-VN');},1000);
+
+  function showPage(id){
+    document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+    document.querySelectorAll('.alert').forEach(a=>{a.classList.remove('show');a.textContent='';});
+  }
+  function showAlert(id,msg,type='error'){
+    const el=document.getElementById(id);
+    el.className='alert alert-'+type+' show';
+    el.textContent=msg;
+  }
+  function setAmt(id,v){document.getElementById(id).value=v;}
+  function fmt(n){return new Intl.NumberFormat('vi-VN').format(n)+' ₫';}
+  function fmtDate(iso){
+    return new Date(iso).toLocaleString('vi-VN',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+  }
+  async function req(method,path,body){
+    const opts={method,headers:{'Content-Type':'application/json'}};
+    if(token)opts.headers['Authorization']='Bearer '+token;
+    if(body)opts.body=JSON.stringify(body);
+    const res=await fetch(API+path,opts);
+    return{ok:res.ok,...(await res.json())};
+  }
+  function setBtn(txtId,loading,defaultText){
+    const txt=document.getElementById(txtId);
+    const btn=txt.closest('button');
+    btn.disabled=loading;
+    txt.innerHTML=loading?'<span class="loader"></span>Đang xử lý...':defaultText;
+  }
+
+  async function doLogin(){
+    const cardNumber=document.getElementById('cardNumber').value.trim();
+    const pin=document.getElementById('pin').value;
+    if(!cardNumber||!pin){showAlert('login-alert','Vui lòng nhập số thẻ và mã PIN');return;}
+    setBtn('loginBtnText',true,'ĐĂNG NHẬP');
+    try{
+      const r=await req('POST','/auth/login',{cardNumber,pin});
+      if(r.success){
+        token=r.data.token; currentCard=r.data.cardNumber;
+        document.getElementById('footerCard').textContent='**** '+currentCard.slice(-4);
+        await refreshBalance();
+        showPage('page-menu');
+      }else{showAlert('login-alert',r.error||'Đăng nhập thất bại');}
+    }catch(e){showAlert('login-alert','Không thể kết nối đến máy chủ');}
+    finally{setBtn('loginBtnText',false,'ĐĂNG NHẬP');}
+  }
+
+  async function refreshBalance(){
+    try{
+      const r=await req('GET','/account/info');
+      if(r.success){
+        document.getElementById('balanceAmt').textContent=fmt(r.data.balance);
+        document.getElementById('accountName').textContent=r.data.ownerName+' · '+r.data.cardNumber;
+      }
+    }catch(e){}
+  }
+
+  async function doLogout(){
+    await req('POST','/auth/logout');
+    token=null; currentCard='';
+    document.getElementById('cardNumber').value='';
+    document.getElementById('pin').value='';
+    document.getElementById('footerCard').textContent='CHƯA ĐĂNG NHẬP';
+    showPage('page-login');
+  }
+
+  async function doWithdraw(){
+    const amount=parseFloat(document.getElementById('withdraw-amount').value);
+    if(!amount||amount<50000){showAlert('withdraw-alert','Số tiền rút tối thiểu là 50.000 ₫');return;}
+    setBtn('withdrawBtnText',true,'XÁC NHẬN RÚT TIỀN');
+    try{
+      const r=await req('POST','/account/withdraw',{amount});
+      if(r.success){
+        document.getElementById('balanceAmt').textContent=fmt(r.data.newBalance);
+        document.getElementById('withdraw-amount').value='';
+        showAlert('withdraw-alert','✓ Rút '+fmt(amount)+' thành công — Số dư còn lại: '+fmt(r.data.newBalance),'success');
+      }else{showAlert('withdraw-alert',r.error||'Giao dịch thất bại');}
+    }catch(e){showAlert('withdraw-alert','Lỗi kết nối đến máy chủ');}
+    finally{setBtn('withdrawBtnText',false,'XÁC NHẬN RÚT TIỀN');}
+  }
+
+  async function doDeposit(){
+    const amount=parseFloat(document.getElementById('deposit-amount').value);
+    if(!amount||amount<10000){showAlert('deposit-alert','Số tiền nạp tối thiểu là 10.000 ₫');return;}
+    setBtn('depositBtnText',true,'XÁC NHẬN NẠP TIỀN');
+    try{
+      const r=await req('POST','/account/deposit',{amount});
+      if(r.success){
+        document.getElementById('balanceAmt').textContent=fmt(r.data.newBalance);
+        document.getElementById('deposit-amount').value='';
+        showAlert('deposit-alert','✓ Nạp '+fmt(amount)+' thành công — Số dư mới: '+fmt(r.data.newBalance),'success');
+      }else{showAlert('deposit-alert',r.error||'Giao dịch thất bại');}
+    }catch(e){showAlert('deposit-alert','Lỗi kết nối đến máy chủ');}
+    finally{setBtn('depositBtnText',false,'XÁC NHẬN NẠP TIỀN');}
+  }
+
+  async function doChangePin(){
+    const currentPin=document.getElementById('currentPin').value;
+    const newPin=document.getElementById('newPin').value;
+    const confirmPin=document.getElementById('confirmPin').value;
+    if(!currentPin||!newPin||!confirmPin){showAlert('pin-alert','Vui lòng điền đầy đủ tất cả các trường');return;}
+    if(newPin!==confirmPin){showAlert('pin-alert','PIN mới và xác nhận PIN không khớp nhau');return;}
+    if(!/^\d{4,6}$/.test(newPin)){showAlert('pin-alert','PIN mới phải là 4 đến 6 chữ số');return;}
+    setBtn('pinBtnText',true,'XÁC NHẬN ĐỔI PIN');
+    try{
+      const r=await req('PUT','/account/change-pin',{currentPin,newPin});
+      if(r.success){
+        document.getElementById('currentPin').value='';
+        document.getElementById('newPin').value='';
+        document.getElementById('confirmPin').value='';
+        showAlert('pin-alert','✓ Đổi mã PIN thành công','success');
+      }else{showAlert('pin-alert',r.error||'Đổi PIN thất bại');}
+    }catch(e){showAlert('pin-alert','Lỗi kết nối đến máy chủ');}
+    finally{setBtn('pinBtnText',false,'XÁC NHẬN ĐỔI PIN');}
+  }
+
+  async function loadHistory(){
+    showPage('page-history');
+    const c=document.getElementById('tx-list');
+    c.innerHTML='<div style="color:var(--muted);font-family:var(--mono);font-size:12px;text-align:center;padding:30px"><span class="loader"></span>Đang tải lịch sử giao dịch...</div>';
+    try{
+      const r=await req('GET','/account/history?limit=30');
+      if(r.success&&r.data.length>0){
+        c.innerHTML=r.data.map(tx=>`
+          <div class="tx-item">
+            <div>
+              <div class="tx-type ${tx.type}">${tx.type==='DEPOSIT'?'+ Nạp tiền':'− Rút tiền'}</div>
+              <div class="tx-date">${fmtDate(tx.createdAt)}</div>
+            </div>
+            <div style="text-align:right">
+              <div class="tx-amt ${tx.type}">${tx.type==='DEPOSIT'?'+':'-'}${fmt(tx.amount)}</div>
+              <div class="tx-status ${tx.status}">${tx.status==='FAILED'?'✗ Thất bại':''}</div>
+            </div>
+          </div>`).join('');
+      }else if(r.success){
+        c.innerHTML='<div style="color:var(--muted);font-family:var(--mono);font-size:12px;text-align:center;padding:40px">Chưa có giao dịch nào</div>';
+      }else{
+        c.innerHTML=`<div style="color:var(--red);font-family:var(--mono);font-size:13px;text-align:center;padding:20px">${r.error}</div>`;
+      }
+    }catch(e){c.innerHTML='<div style="color:var(--red);font-family:var(--mono);font-size:13px;text-align:center;padding:20px">Lỗi kết nối đến máy chủ</div>';}
+  }
+
+  async function loadReport(){
+    reportYearMonth=ym();
+    showPage('page-report');
+    await fetchReport();
+  }
+
+  async function fetchReport(){
+    document.getElementById('reportMonth').textContent=reportYearMonth;
+    ['rpt-count','rpt-net','rpt-deposit','rpt-withdraw'].forEach(id=>{
+      document.getElementById(id).innerHTML='<span class="loader"></span>';
+    });
+    try{
+      const r=await req('GET','/report/monthly?month='+reportYearMonth);
+      if(r.success){
+        const d=r.data;
+        document.getElementById('rpt-count').textContent=d.txCount+' giao dịch';
+        const net=d.netFlow;
+        const netEl=document.getElementById('rpt-net');
+        netEl.textContent=(net>=0?'+':'')+fmt(net);
+        netEl.style.color=net>=0?'var(--green)':'var(--red)';
+        document.getElementById('rpt-deposit').textContent=fmt(d.totalDeposit);
+        document.getElementById('rpt-withdraw').textContent=fmt(d.totalWithdraw);
+      }
+    }catch(e){document.getElementById('rpt-count').textContent='Lỗi';}
+  }
+
+  function changeMonth(delta){
+    const[y,m]=reportYearMonth.split('-').map(Number);
+    const d=new Date(y,m-1+delta,1);
+    reportYearMonth=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+    fetchReport();
+  }
+
+  document.addEventListener('keydown',e=>{
+    if(e.key!=='Enter')return;
+    const active=document.querySelector('.page.active');
+    if(active.id==='page-login')doLogin();
+    else if(active.id==='page-withdraw')doWithdraw();
+    else if(active.id==='page-deposit')doDeposit();
+    else if(active.id==='page-changepin')doChangePin();
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,38 @@
+services:
+  app:
+    build: .
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      # Mount file config vào container (không bake password vào image)
+      - ./src/main/resources/application.properties:/app/config/application.properties
+    environment:
+      - SPRING_CONFIG_LOCATION=file:/app/config/application.properties
+
+  db:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: yourpassword
+      MYSQL_DATABASE: atm_db
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./src/main/resources/db/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+    healthcheck:
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost" ]
+      interval: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 5s
+      retries: 5
+
+volumes:
+  db_data:
